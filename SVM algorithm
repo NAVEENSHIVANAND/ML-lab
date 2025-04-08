@@ -1,0 +1,137 @@
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+from sklearn.datasets import load_iris
+
+# Load Dataset
+iris = load_iris()
+X = iris.data[:, :2]  # Using only first 2 features for plotting
+y = iris.target
+
+# Binary Classification (Setosa vs Others)
+y_binary = np.where(y == 0, -1, 1)
+
+df = pd.DataFrame(iris.data, columns=iris.feature_names)
+df['species'] = iris.target_names[y]
+print("First 5 Rows of Dataset:\n", df.head())
+
+# SVM Class from Scratch
+class SVM:
+    def __init__(self, lr=0.001, lambda_param=0.01, n_iters=1000):
+        self.lr = lr
+        self.lambda_param = lambda_param
+        self.n_iters = n_iters
+        self.w = None
+        self.b = None
+
+    def fit(self, X, y):
+        n_samples, n_features = X.shape
+        self.w = np.zeros(n_features)
+        self.b = 0
+
+        for _ in range(self.n_iters):
+            for idx, x_i in enumerate(X):
+                condition = y[idx] * (np.dot(x_i, self.w) + self.b) >= 1
+                if condition:
+                    self.w -= self.lr * (2 * self.lambda_param * self.w)
+                else:
+                    self.w -= self.lr * (2 * self.lambda_param * self.w - np.dot(x_i, y[idx]))
+                    self.b -= self.lr * y[idx]
+
+    def predict(self, X):
+        return np.sign(np.dot(X, self.w) + self.b)
+
+# Train-Test Split
+split = int(0.8 * len(X))
+X_train, X_test = X[:split], X[split:]
+y_train, y_test = y_binary[:split], y_binary[split:]
+
+# Train SVM
+model = SVM()
+model.fit(X_train, y_train)
+
+# Predict
+y_pred = model.predict(X_test)
+
+# Evaluation Functions
+def accuracy(y_true, y_pred):
+    return np.mean(y_true == y_pred)
+
+def confusion_matrix(y_true, y_pred):
+    tp = np.sum((y_true == 1) & (y_pred == 1))
+    tn = np.sum((y_true == -1) & (y_pred == -1))
+    fp = np.sum((y_true == -1) & (y_pred == 1))
+    fn = np.sum((y_true == 1) & (y_pred == -1))
+    return np.array([[tp, fn], [fp, tn]])
+
+def precision(tp, fp):
+    return tp / (tp + fp)
+
+def recall(tp, fn):
+    return tp / (tp + fn)
+
+def f1_score(p, r):
+    return 2 * (p * r) / (p + r)
+
+# Metrics Calculation
+cm = confusion_matrix(y_test, y_pred)
+tp, fn, fp, tn = cm[0][0], cm[0][1], cm[1][0], cm[1][1]
+
+acc = accuracy(y_test, y_pred)
+prec = precision(tp, fp)
+rec = recall(tp, fn)
+f1 = f1_score(prec, rec)
+
+print("\nConfusion Matrix:\n", cm)
+print("Accuracy:", acc)
+print("Precision:", prec)
+print("Recall:", rec)
+print("F1 Score:", f1)
+
+# User Input for Prediction
+print("\nEnter Features for Prediction:")
+sepal_length = float(input("Enter Sepal Length: "))
+sepal_width = float(input("Enter Sepal Width: "))
+petal_length = float(input("Enter Petal Length: "))
+petal_width = float(input("Enter Petal Width: "))
+
+input_features = np.array([sepal_length, sepal_width]).reshape(1, -1)
+prediction = model.predict(input_features)
+
+if prediction == -1:
+    print("Predicted Species: Setosa")
+else:
+    print("Predicted Species: Versicolor or Virginica")
+
+# Visualization with Hyperplane
+def plot_hyperplane():
+    def get_hyperplane(x, w, b, offset):
+        return (-w[0] * x - b + offset) / w[1]
+
+    fig = plt.figure()
+    ax = fig.add_subplot(1,1,1)
+
+    plt.scatter(X[:, 0], X[:, 1], c=y_binary, cmap='bwr', alpha=0.7)
+
+    x0_1 = np.amin(X[:, 0])
+    x0_2 = np.amax(X[:, 0])
+
+    x1_1 = get_hyperplane(x0_1, model.w, model.b, 0)
+    x1_2 = get_hyperplane(x0_2, model.w, model.b, 0)
+
+    x1_1_m = get_hyperplane(x0_1, model.w, model.b, -1)
+    x1_2_m = get_hyperplane(x0_2, model.w, model.b, -1)
+
+    x1_1_p = get_hyperplane(x0_1, model.w, model.b, 1)
+    x1_2_p = get_hyperplane(x0_2, model.w, model.b, 1)
+
+    ax.plot([x0_1, x0_2], [x1_1, x1_2], 'k-')
+    ax.plot([x0_1, x0_2], [x1_1_m, x1_2_m], 'k--')
+    ax.plot([x0_1, x0_2], [x1_1_p, x1_2_p], 'k--')
+
+    plt.xlabel('Sepal Length')
+    plt.ylabel('Sepal Width')
+    plt.title('SVM Decision Boundary')
+    plt.show()
+
+plot_hyperplane()
