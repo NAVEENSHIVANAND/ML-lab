@@ -1,0 +1,94 @@
+import csv
+import math
+import random
+from collections import Counter
+
+# ---------- KNN Implementation ----------
+
+def load_dataset(filename):
+    with open(filename, 'r') as f:
+        data = list(csv.reader(f))
+        header = data[0]
+        rows = data[1:]
+        for row in rows:
+            for i in range(4):  
+                row[i] = float(row[i])
+        return rows
+
+def compute_mean_std(dataset):
+    means, stds = [], []
+    for i in range(4):
+        col = [row[i] for row in dataset]
+        mean = sum(col) / len(col)
+        std = (sum((x - mean) ** 2 for x in col) / len(col)) ** 0.5
+        means.append(mean)
+        stds.append(std)
+    return means, stds
+
+def normalize_dataset(dataset, means, stds):
+    for row in dataset:
+        for i in range(4):
+            row[i] = (row[i] - means[i]) / stds[i]
+    return dataset
+
+def split_dataset(dataset, test_size=0.2):
+    random.shuffle(dataset)
+    split_index = int(len(dataset) * (1 - test_size))
+    return dataset[:split_index], dataset[split_index:]
+
+def euclidean_distance(row1, row2):
+    return math.sqrt(sum((row1[i] - row2[i]) ** 2 for i in range(4)))
+
+def knn_predict(train, test_row, k):
+    distances = []
+    for train_row in train:
+        dist = euclidean_distance(test_row, train_row)
+        distances.append((train_row, dist))
+    distances.sort(key=lambda x: x[1])
+    neighbors = distances[:k]
+    labels = [neighbor[0][4] for neighbor in neighbors]
+    prediction = Counter(labels).most_common(1)[0][0]
+    return prediction
+
+def evaluate_model(train, test, k):
+    correct = 0
+    predictions = []
+    for row in test:
+        prediction = knn_predict(train, row, k)
+        predictions.append(prediction)
+        if prediction == row[4]:
+            correct += 1
+    accuracy = correct / len(test)
+    return accuracy, predictions
+
+
+filename = '/content/sample_data/IRIS.csv'  
+dataset = load_dataset(filename)
+
+means, stds = compute_mean_std(dataset)
+
+dataset = normalize_dataset(dataset, means, stds)
+
+train_data, test_data = split_dataset(dataset)
+
+k = 3
+accuracy, predictions = evaluate_model(train_data, test_data, k)
+
+print(f"Model Accuracy: {accuracy:.2f}\n\n")
+
+print("\n--- Predict Iris Species from Your Input ---")
+try:
+    user_input = []
+    user_input.append(float(input("Enter Sepal Length (cm): ")))
+    user_input.append(float(input("Enter Sepal Width (cm): ")))
+    user_input.append(float(input("Enter Petal Length (cm): ")))
+    user_input.append(float(input("Enter Petal Width (cm): ")))
+
+    for i in range(4):
+        user_input[i] = (user_input[i] - means[i]) / stds[i]
+
+    predicted_species = knn_predict(train_data, user_input, k)
+    print(f"\n Predicted Iris Species: {predicted_species}")
+
+except ValueError:
+    print("Invalid input. Please enter numeric values for all measurements.")
