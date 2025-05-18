@@ -1,4 +1,4 @@
-<h1>Aritificial Intelligence - 1BM22CS135</h1>
+<h1> - 1BM22CS411</h1>
 <h2>Laboratory Program - 1</h2>
 <h3>A. Implement Tic –Tac –Toe Game.</h3>
 <h3>B. Implement vacuum cleaner agent.</h3>
